@@ -1,5 +1,7 @@
 # AT89C2051 Clock Kit Firmware (HX12C013)
 
+![Image of unassembled kit](https://raw.githubusercontent.com/ruthsarian/at89c2051_clock/master/docs/unassembled%20kit.jpg)
+
 ## Origin Story
 I purchased a [clock kit off eBay](https://www.ebay.com/sch/i.html?_nkw=at89c2051+clock+kit+4+bits) based on the AT89C2051 microcontroller. The clock failed to operate after assembly. I discovered that the MCU had not been flashed with firmware, but actually contained the first 2kb of the assembly source code for the firmware. I purchased 2 more kits from eBay from different sellers hoping to find one with the assembled firmware, but the two new kits also had the same, partial source code flashed on the MCU. I have since been able to obtain the complete, original firmware for this clock kit from one of the eBay sellers. The firmware worked, but had some issues such as when setting time each digit was set separately and each digit could be set to a value of 0-9; it was possible to set a time of 99:99.
 
