@@ -7,40 +7,27 @@
  *   - R6 is a trickle-charge for a rechargeable backup battery. If using non-rechargeable backup
  *     battery this could create issues.
  * 
- * Not optimize for anything; once feature complete, should look at optimizing for code size
- *
  * TODO: 
- *   - finish alarm
- *       - Timer1 for a 1 minute alarm (or use something in the CLOCK routine????
  *	 - display dimmer
- *       - will have to put toggling of buzzer into a timer ISR to avoid differences in main loop
+ *       > will have to put toggling of buzzer into a timer ISR to avoid differences in main loop
  *         timing because display_update = 5ms when display on, and like .001ms when display is not on
- *   - look at optimizations (mainly just removing repetitive code, unnecessary variables) 
- *     such as moving to a single machine state variable and enum
+ *   - accuracy tuning
+ *       > add the ability to tune how fast/slow the clock operates without having to recompile the firmware
+ *       > maybe hold both buttons down for dual LONG button presses to trigger this mode
+ *   - code optimization
+ *       > look at optimizations (mainly just removing repetitive code, unnecessary variables) 
+ *         such as moving to a single machine state variable and enum
  *
+ *	CLOCK OPERATION INSTRUCTIONS
+ *	  B1 = S1 = Left Button
+ *	  B2 = S2 = Right Button
  *
- * B1 short press should change to display alarm
- * B1 long press on alarm display should edit alarm
- * how to read a short B1 press w/o screwing with b1_long press?
+ *	  Short B2 press cycles through clock display modes (clock, HH:MM, MM:SS, 12h/24h format)
+ *    Short B1 press cycles through alarm settings (clock, alarm, enable/disable alarm)
  *
- * trigger a "pressed" on release
- * trigger a "long" while still held down
- *
- * but i like an immediate short press pickup when setting time
- * could always reduce long press time
- *
- *
- *	Button Functions Described!
- *
- *	B1 = S1 = Left Button
- *	B2 = S2 = Right Button
- *
- *	One button will be for cycling through display modes, and to increment number during set time mode
- *  Other button, triggered by a LONG press, will enter edit time mode; also used to cycle through values being edited
- *
- *  S1 = edit, digit cycle
- *  S2 = display mode cycle
- *
+ *    Long B2 press while displaying current time (HH:MM) and alarm will enter set alarm/time mode.
+ *    Short B2 press on alarm enable/disable and 12h/24h format mode will toggle the setting
+ * 
  *  Display Modes
  *		- current time (hh:mm), blinking colon
  *		- current minute/seconds (mm:ss), blinkin colon
@@ -51,7 +38,6 @@
  *		- date ??? (thats... best left to an RTC, leap years and shit)
  *
  */
-
 
 // so said EVELYN the modified DOG
 #pragma less_pedantic

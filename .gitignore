@@ -1,4 +1,3 @@
-*.hex
 *.ihx
 *.bin
 build/*
