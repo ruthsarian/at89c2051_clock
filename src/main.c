@@ -14,6 +14,8 @@
  *   - accuracy tuning
  *       > add the ability to tune how fast/slow the clock operates without having to recompile the firmware
  *       > maybe hold both buttons down for dual LONG button presses to trigger this mode
+ *   - stopwatch mode
+ *       > the original firmware claimed to support this (but didn't); perhaps it should be added
  *   - code optimization
  *       > look at optimizations (mainly just removing repetitive code, unnecessary variables) 
  *
@@ -363,7 +365,6 @@ void main(void) {
 		if (ALARM_ENABLE && CLOCK_RUNNING && alarm_hour == clock_hour && alarm_minute == clock_minute) {
 			if (clock_second == 0 && clock_state != ALARMING) {
 				clock_state = ALARMING;
-				clock_state = ALARMING;
 			} 
 			if (clock_state == ALARMING) {
 				if (show_colon == 1) {
@@ -374,7 +375,6 @@ void main(void) {
 			}
 		} else if (clock_state == ALARMING) {	// turn off the alarm after 1 minute
 			clock_state = NORMAL;
-			clock_state = NORMAL;
 			P3_7 = 1;						// turn off the alarm
 		}
 
@@ -384,7 +384,6 @@ void main(void) {
 			case ALARMING:
 				if (B1_RELEASED || B2_RELEASED) {
 					clock_state = NORMAL;
-					clock_state = NORMAL;
 					P3_7 = 1;				// turn off alarm
 					B1_RELEASED = 0;
 					B2_RELEASED = 0;
@@ -393,7 +392,6 @@ void main(void) {
 
 			case EDIT_ALARM_MIN:
 				if (B1_PRESSED) {
-					clock_state = ENABLE_ALARM;
 					clock_state = ENABLE_ALARM;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {
@@ -408,7 +406,6 @@ void main(void) {
 			case EDIT_ALARM_HOUR:
 				if (B1_PRESSED) {
 					clock_state = EDIT_ALARM_MIN;
-					clock_state = EDIT_ALARM_MIN;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {
 					increment_alarm_hour();
@@ -422,7 +419,6 @@ void main(void) {
 			case ENABLE_ALARM:
 				if (B1_PRESSED) {
 					clock_state = NORMAL;
-					clock_state = NORMAL;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {
 					ALARM_ENABLE = !ALARM_ENABLE;
@@ -433,11 +429,9 @@ void main(void) {
 			case SHOW_ALARM:
 				if (B1_PRESSED_LONG) {
 					clock_state = EDIT_ALARM_HOUR;
-					clock_state = EDIT_ALARM_HOUR;
 					B1_PRESSED = 0;
 					B1_PRESSED_LONG = 0;
 				} else if (B1_RELEASED) {
-					clock_state = ENABLE_ALARM;
 					clock_state = ENABLE_ALARM;
 					B1_RELEASED = 0;
 				}
@@ -445,7 +439,6 @@ void main(void) {
 	
 			case SET_24H:
 				if (B2_RELEASED) {
-					clock_state = NORMAL;
 					clock_state = NORMAL;
 					B2_RELEASED = 0;
 				} else if (B1_RELEASED) {
@@ -456,7 +449,6 @@ void main(void) {
 
 			case EDIT_MIN:
 				if (B1_PRESSED) {			// exit edit mode
-					clock_state = NORMAL;
 					clock_state = NORMAL;
 					B1_PRESSED = 0;
 					CLOCK_RUNNING = 1;
@@ -474,7 +466,6 @@ void main(void) {
 				CLOCK_RUNNING = 0;
 				if (B1_PRESSED) {			// switch to edit minute mode
 					clock_state = EDIT_MIN;
-					clock_state = EDIT_MIN;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {	// increment hour
 					increment_hour();
@@ -489,7 +480,6 @@ void main(void) {
 			case MIN_SEC:
 				if (B2_RELEASED) {
 					clock_state = SET_24H;
-					clock_state = SET_24H;
 					B2_RELEASED = 0;
 				}
 				break;
@@ -498,15 +488,12 @@ void main(void) {
 			default:
 				if (B2_RELEASED) {
 					clock_state = MIN_SEC;
-					clock_state = MIN_SEC;
 					B2_RELEASED = 0;
 				} else if (B1_PRESSED_LONG) {
-					clock_state = EDIT_HOUR;
 					clock_state = EDIT_HOUR;
 					B1_PRESSED = 0;
 					B1_PRESSED_LONG = 0;
 				} else if (B1_RELEASED) {
-					clock_state = SHOW_ALARM;
 					clock_state = SHOW_ALARM;
 					B1_RELEASED = 0;
 				}
