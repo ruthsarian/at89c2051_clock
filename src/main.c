@@ -16,7 +16,6 @@
  *       > maybe hold both buttons down for dual LONG button presses to trigger this mode
  *   - code optimization
  *       > look at optimizations (mainly just removing repetitive code, unnecessary variables) 
- *         such as moving to a single machine state variable and enum
  *
  *	CLOCK OPERATION INSTRUCTIONS
  *	  B1 = S1 = Left Button
@@ -127,35 +126,20 @@ volatile __bit B2_PRESSED = 0;
 volatile __bit B2_RELEASED = 0;
 volatile __bit B2_PRESSED_LONG = 0;
 
-// button modes
+// clock state
 typedef enum {
-	B_NORMAL,
-	B_MIN_SEC,
-	B_EDIT_HOUR,
-	B_EDIT_MIN,
-	B_SET_24H,
-	B_SHOW_ALARM,
-	B_EDIT_ALARM_HOUR,
-	B_EDIT_ALARM_MIN,
-	B_ENABLE_ALARM,
-	B_ALARMING
-} button_mode_t;
-button_mode_t bmode = B_NORMAL;
-
-// display modes
-typedef enum {
-	D_NORMAL,
-	D_MIN_SEC,
-	D_EDIT_HOUR,
-	D_EDIT_MIN,
-	D_SET_24H,
-	D_SHOW_ALARM,
-	D_EDIT_ALARM_HOUR,
-	D_EDIT_ALARM_MIN,
-	D_ENABLE_ALARM,
-	D_ALARMING
-} display_mode_t;
-display_mode_t dmode = D_NORMAL;
+	NORMAL,
+	MIN_SEC,
+	EDIT_HOUR,
+	EDIT_MIN,
+	SET_24H,
+	SHOW_ALARM,
+	EDIT_ALARM_HOUR,
+	EDIT_ALARM_MIN,
+	ENABLE_ALARM,
+	ALARMING
+} clock_state_t;
+clock_state_t clock_state = NORMAL;
 
 // check button status and set appropriate flags
 // Bn_PRESSED* flags will be set ONCE PER PRESS. This means software can UNSET these flags if desired.
@@ -377,40 +361,40 @@ void main(void) {
 
 		// alarm mode
 		if (ALARM_ENABLE && CLOCK_RUNNING && alarm_hour == clock_hour && alarm_minute == clock_minute) {
-			if (clock_second == 0 && bmode != B_ALARMING) {
-				bmode = B_ALARMING;
-				dmode = D_ALARMING;
+			if (clock_second == 0 && clock_state != ALARMING) {
+				clock_state = ALARMING;
+				clock_state = ALARMING;
 			} 
-			if (bmode == B_ALARMING) {
+			if (clock_state == ALARMING) {
 				if (show_colon == 1) {
 					P3_7 = !P3_7;				// P3_7 = show_colon; (this toggling creates an interesting effect)
 				} else {
 					P3_7 = 1;					// if doing the toggling effect, need to make sure buzzer is off during blink
 				}
 			}
-		} else if (bmode == B_ALARMING) {	// turn off the alarm after 1 minute
-			bmode = B_NORMAL;
-			dmode = D_NORMAL;
+		} else if (clock_state == ALARMING) {	// turn off the alarm after 1 minute
+			clock_state = NORMAL;
+			clock_state = NORMAL;
 			P3_7 = 1;						// turn off the alarm
 		}
 
-		// handle button events
-		switch (bmode) {
+		// handle button events based on current clock state
+		switch (clock_state) {
 
-			case B_ALARMING:
+			case ALARMING:
 				if (B1_RELEASED || B2_RELEASED) {
-					bmode = B_NORMAL;
-					dmode = D_NORMAL;
+					clock_state = NORMAL;
+					clock_state = NORMAL;
 					P3_7 = 1;				// turn off alarm
 					B1_RELEASED = 0;
 					B2_RELEASED = 0;
 				}
 				break;
 
-			case B_EDIT_ALARM_MIN:
+			case EDIT_ALARM_MIN:
 				if (B1_PRESSED) {
-					bmode = B_ENABLE_ALARM;
-					dmode = D_ENABLE_ALARM;
+					clock_state = ENABLE_ALARM;
+					clock_state = ENABLE_ALARM;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {
 					increment_alarm_minute();
@@ -421,10 +405,10 @@ void main(void) {
 				}
 				break;
 
-			case B_EDIT_ALARM_HOUR:
+			case EDIT_ALARM_HOUR:
 				if (B1_PRESSED) {
-					bmode = B_EDIT_ALARM_MIN;
-					dmode = D_EDIT_ALARM_MIN;
+					clock_state = EDIT_ALARM_MIN;
+					clock_state = EDIT_ALARM_MIN;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {
 					increment_alarm_hour();
@@ -435,10 +419,10 @@ void main(void) {
 				}
 				break;
 
-			case B_ENABLE_ALARM:
+			case ENABLE_ALARM:
 				if (B1_PRESSED) {
-					bmode = B_NORMAL;
-					dmode = D_NORMAL;
+					clock_state = NORMAL;
+					clock_state = NORMAL;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {
 					ALARM_ENABLE = !ALARM_ENABLE;
@@ -446,23 +430,23 @@ void main(void) {
 				}
 				break;
 
-			case B_SHOW_ALARM:
+			case SHOW_ALARM:
 				if (B1_PRESSED_LONG) {
-					dmode = D_EDIT_ALARM_HOUR;
-					bmode = B_EDIT_ALARM_HOUR;
+					clock_state = EDIT_ALARM_HOUR;
+					clock_state = EDIT_ALARM_HOUR;
 					B1_PRESSED = 0;
 					B1_PRESSED_LONG = 0;
 				} else if (B1_RELEASED) {
-					dmode = D_ENABLE_ALARM;
-					bmode = B_ENABLE_ALARM;
+					clock_state = ENABLE_ALARM;
+					clock_state = ENABLE_ALARM;
 					B1_RELEASED = 0;
 				}
 				break;
 	
-			case B_SET_24H:
+			case SET_24H:
 				if (B2_RELEASED) {
-					bmode = B_NORMAL;
-					dmode = D_NORMAL;
+					clock_state = NORMAL;
+					clock_state = NORMAL;
 					B2_RELEASED = 0;
 				} else if (B1_RELEASED) {
 					TWELVE_TIME = !TWELVE_TIME;
@@ -470,10 +454,10 @@ void main(void) {
 				}
 				break;
 
-			case B_EDIT_MIN:
+			case EDIT_MIN:
 				if (B1_PRESSED) {			// exit edit mode
-					bmode = B_NORMAL;
-					dmode = D_NORMAL;
+					clock_state = NORMAL;
+					clock_state = NORMAL;
 					B1_PRESSED = 0;
 					CLOCK_RUNNING = 1;
 				} else if (B2_PRESSED) {	// increment minute
@@ -486,11 +470,11 @@ void main(void) {
 				}
 				break;
 
-			case B_EDIT_HOUR:
+			case EDIT_HOUR:
 				CLOCK_RUNNING = 0;
 				if (B1_PRESSED) {			// switch to edit minute mode
-					bmode = B_EDIT_MIN;
-					dmode = D_EDIT_MIN;
+					clock_state = EDIT_MIN;
+					clock_state = EDIT_MIN;
 					B1_PRESSED = 0;
 				} else if (B2_PRESSED) {	// increment hour
 					increment_hour();
@@ -502,36 +486,37 @@ void main(void) {
 				}
 				break;
 
-			case B_MIN_SEC:
+			case MIN_SEC:
 				if (B2_RELEASED) {
-					dmode = B_SET_24H;
-					bmode = B_SET_24H;
+					clock_state = SET_24H;
+					clock_state = SET_24H;
 					B2_RELEASED = 0;
 				}
 				break;
 			
-			case B_NORMAL:
+			case NORMAL:
 			default:
 				if (B2_RELEASED) {
-					dmode = D_MIN_SEC;
-					bmode = B_MIN_SEC;
+					clock_state = MIN_SEC;
+					clock_state = MIN_SEC;
 					B2_RELEASED = 0;
 				} else if (B1_PRESSED_LONG) {
-					dmode = D_EDIT_HOUR;
-					bmode = B_EDIT_HOUR;
+					clock_state = EDIT_HOUR;
+					clock_state = EDIT_HOUR;
 					B1_PRESSED = 0;
 					B1_PRESSED_LONG = 0;
 				} else if (B1_RELEASED) {
-					dmode = D_SHOW_ALARM;
-					bmode = B_SHOW_ALARM;
+					clock_state = SHOW_ALARM;
+					clock_state = SHOW_ALARM;
 					B1_RELEASED = 0;
 				}
 				break;
 		}
 
-		// display mode
-		switch (dmode) {
-			case D_ALARMING:
+		// generate display based on current clock state
+		// button events and display are separated as state may change during button events
+		switch (clock_state) {
+			case ALARMING:
 				if (show_colon == 1) {
 					set_hour_dbuf(clock_hour);
 					dbuf[2] = ledtable[(clock_minute/10)];
@@ -545,7 +530,7 @@ void main(void) {
 				}
 				break;
 
-			case D_ENABLE_ALARM:
+			case ENABLE_ALARM:
 				dbuf[0] = ledtable[LED_A];
 				dbuf[1] = ledtable[LED_L];
 				dbuf[2] = ledtable[LED_BLANK];
@@ -556,7 +541,7 @@ void main(void) {
 				}
 				break;
 
-			case D_EDIT_ALARM_MIN:
+			case EDIT_ALARM_MIN:
 
 				set_hour_dbuf(alarm_hour);
 				if (show_blink == 1) {
@@ -571,7 +556,7 @@ void main(void) {
 				}
 				break;
 
-			case D_EDIT_ALARM_HOUR:
+			case EDIT_ALARM_HOUR:
 
 				if (show_blink == 1) {
 					set_hour_dbuf(alarm_hour);
@@ -586,7 +571,7 @@ void main(void) {
 				}
 				break;
 
-			case D_SHOW_ALARM :
+			case SHOW_ALARM :
 
 				if (show_colon == 1) {
 					set_hour_dbuf(alarm_hour);
@@ -599,17 +584,9 @@ void main(void) {
 					dbuf[2] = ledtable[LED_BLANK];
 					dbuf[3] = ledtable[LED_BLANK];
 				}
-				/*
-				set_hour_dbuf(alarm_hour);
-				dbuf[2] = ledtable[(alarm_minute/10)];
-				dbuf[3] = ledtable[(alarm_minute%10)];
-				if (TWELVE_TIME && alarm_hour > 11) {
-					dbuf[1] |= 1;
-				}
-				*/
 				break;
 
-			case D_SET_24H:
+			case SET_24H:
 
 				if (TWELVE_TIME) {
 					dbuf[0] = ledtable[1];
@@ -622,7 +599,7 @@ void main(void) {
 				dbuf[3] = ledtable[LED_BLANK];
 				break;
 
-			case D_EDIT_MIN:
+			case EDIT_MIN:
 
 				set_hour_dbuf(clock_hour);
 				if (show_blink == 1) {
@@ -641,7 +618,7 @@ void main(void) {
 
 				break;
 
-			case D_EDIT_HOUR:
+			case EDIT_HOUR:
 
 				if (show_blink == 1) {
 					set_hour_dbuf(clock_hour);
@@ -660,7 +637,7 @@ void main(void) {
 
 				break;
 
-			case D_MIN_SEC:
+			case MIN_SEC:
 
 				// update display buffer to show current time
 				dbuf[0] = ledtable[(clock_minute/10)];
@@ -674,7 +651,7 @@ void main(void) {
 				}
 				break;
 
-			case D_NORMAL:
+			case NORMAL:
 			default:
 
 				// update display buffer to show current time
@@ -689,6 +666,7 @@ void main(void) {
 				break;
 		}
 
-		display_update();			// update the display
+		// update the display
+		display_update();
     }
 }
