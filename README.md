@@ -16,9 +16,9 @@ I began this project to create a new firmware that would function in a manner th
 ## Operation
 There are two buttons, the left (B1) and right (B2) buttons. 
 
-Short B2 presses cycle through displaying the current time in HH:MM and MM:SS format as well as the 12/24-hour display format option. A short B1 press while on the 12/24-hour display format will toggle the setting.
+Short B2 presses cycle through displaying the current time in HH:MM and MM:SS format as well as the 12/24-hour display format option. A short B1 press while on the 12/24-hour display format will toggle the setting. A short B2 press will then enter the timer mode. A short B1 press will toggle the start/stop of the timer. A long B2 press will reset the timer. The timer will continue to increment (if running) even when cycling through other modes. Timer currently resets after 60 minutes.
 
-A long B1 press while viewing the curren time in HH:MM format will enter the set time mode. The hours section will begin to blink. Short B2 presses will increment the hour by 1. Holding B2 down will cause the clock to increment quickly after 1 second. A short B1 press will then move to the minutes where operation is similar to setting the hour. Another B1 press will exit set time mode and the clock will return to display the current time.
+A long B1 press while viewing the current time in HH:MM format will enter the set time mode. The hours section will begin to blink. Short B2 presses will increment the hour by 1. Holding B2 down will cause the clock to increment quickly after 1 second. A short B1 press will then move to the minutes where operation is similar to setting the hour. Another B1 press will exit set time mode and the clock will return to display the current time.
 
 Short B1 presses cycle through setting and enabling the alarm. When viewing the currently set alarm time, the display will blink. This is done to differentiate between viewing the current time and the currently set alarm time. While viewing the alarm time, a long press of B1 will enter the set alarm mode, at which point only the digits being set will blink. Setting the alarm is similar to setting the current time.
 

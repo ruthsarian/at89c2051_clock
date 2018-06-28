@@ -14,10 +14,12 @@
  *   - accuracy tuning
  *       > add the ability to tune how fast/slow the clock operates without having to recompile the firmware
  *       > maybe hold both buttons down for dual LONG button presses to trigger this mode
- *   - stopwatch mode
- *       > the original firmware claimed to support this (but didn't); perhaps it should be added
+ *   - refine stopwatch mode
+ *       > a 'timer' mode is working, but does not show ms, just seconds. good enough? and should it track hours or
+ *         is MM:SS also good enough?
  *   - code optimization
  *       > look at optimizations (mainly just removing repetitive code, unnecessary variables) 
+ *       > need to start doing this to save space, the code is almost at max for the flash area of the chip.
  *
  *	CLOCK OPERATION INSTRUCTIONS
  *	  B1 = S1 = Left Button
@@ -47,10 +49,9 @@
 #define CLOCK_TIMER_HIGH		0x3C
 #define CLOCK_TIMER_LOW			0xD5	// original ASM source was 0xB5, but experimentation shows this should be a more accurate value
 #define CLOCK_TIMER_COUNT		20
-#define CLOCK_COLON_COUNT		10		// 1/2 of CLOCK_TIMER_COUNT
+#define CLOCK_COLON_COUNT		10	// 1/2 of CLOCK_TIMER_COUNT
 #define CLOCK_BLINK_COUNT		5
 #define CLOCK_INCREMENT_COUNT	4
-#define MAX_DISPLAY_DIM			20
 
 // Button related defines
 #define BUTTON_PRESS			2
@@ -116,7 +117,12 @@ volatile __bit show_blink = 0;
 // used while holding down the digit increment button during set time mode
 volatile __bit clock_increment = 0;
 
-// number of main program loops per single display refresh, valid values are 1 - MAX_DISPLAY_DIM
+// timer variables
+volatile uint8_t timer_minute = 0;
+volatile uint8_t timer_second = 0;
+volatile __bit TIMER_RUNNING = 0;
+
+// number of ms between display refresh
 //uint8_t display_dimmer = 10;
 
 // button variables
@@ -124,9 +130,11 @@ volatile uint8_t debounce[0] = {0, 0};
 volatile __bit B1_PRESSED = 0;
 volatile __bit B1_RELEASED = 0;
 volatile __bit B1_PRESSED_LONG = 0;
+volatile __bit B1_RELEASED_LONG = 0;
 volatile __bit B2_PRESSED = 0;
 volatile __bit B2_RELEASED = 0;
 volatile __bit B2_PRESSED_LONG = 0;
+volatile __bit B2_RELEASED_LONG = 0;
 
 // clock state
 typedef enum {
@@ -139,7 +147,8 @@ typedef enum {
 	EDIT_ALARM_HOUR,
 	EDIT_ALARM_MIN,
 	ENABLE_ALARM,
-	ALARMING
+	ALARMING,
+	TIMER
 } clock_state_t;
 clock_state_t clock_state = NORMAL;
 
@@ -156,6 +165,7 @@ void button_status(void) {
 				B1_PRESSED = 1;	
 			} 
 			if (debounce[0] == BUTTON_PRESS_LONG) {
+				B1_RELEASED_LONG = 0;
 				B1_PRESSED_LONG = 1;
 			}	
 		}
@@ -165,6 +175,9 @@ void button_status(void) {
 			B1_RELEASED = 1;
 		}
 		B1_PRESSED = 0;
+		if (B1_PRESSED_LONG) {
+			B1_RELEASED_LONG = 1;
+		}
 		B1_PRESSED_LONG = 0;
 	}
 
@@ -177,6 +190,7 @@ void button_status(void) {
 				B2_PRESSED = 1;
 			} 
 			if (debounce[1] == BUTTON_PRESS_LONG) {
+				B2_RELEASED_LONG = 0;
 				B2_PRESSED_LONG = 1;
 			}
 		}
@@ -186,7 +200,30 @@ void button_status(void) {
 			B2_RELEASED = 1;
 		}
 		B2_PRESSED = 0;
+		if (B2_PRESSED_LONG) {
+			B2_RELEASED_LONG = 1;
+		}
 		B2_PRESSED_LONG = 0;
+	}
+}
+
+// timer reset
+void timer_reset() {
+	timer_minute = 0;
+	timer_second = 0;
+}
+
+void increment_timer_minute() {
+	if (++timer_minute == 60) {
+		timer_minute = 0;
+		// increment_timer_hour();
+	}
+}
+
+void increment_timer_second() {
+	if (++timer_second == 60) {
+		timer_second = 0;
+		increment_timer_minute();
 	}
 }
 
@@ -215,6 +252,9 @@ void increment_second() {
 			increment_minute();
 		}
 	}
+	if (TIMER_RUNNING) {
+		increment_timer_second();
+	}
 }
 
 void increment_alarm_hour() {
@@ -232,6 +272,18 @@ void increment_alarm_minute() {
 		}
 	}
 }
+
+
+/* i feel like i need a time object that i pass to the increment_* functions and current time, alarm, and timer would all be objects of this type.
+ * but what about RUNNING flag?
+ * that would have to be part of the object type as well
+ * ... 
+ * why do the increment_* functions test for clock_running? the thing.... for setting the time/alarm. don't increment if we're in a SET CLOCK mode
+ * perhaps another flag to add to the clock object, a SET MODE boolean
+ *
+ * maybe call the 'running' flag ENABLE; this would be more applicable a word to the alarm state
+ */
+
 
 // Timer0 ISR, used to maintain the time, executes every 50ms
 void timer0_isr(void) __interrupt (1) __using (1) {
@@ -262,7 +314,7 @@ void timer0_isr(void) __interrupt (1) __using (1) {
 	// control digit increment
 	if (--next_increment == 0) {
 		next_increment = CLOCK_INCREMENT_COUNT;
-		clock_increment = 1;						// flag will be unset by software
+		clock_increment = 1;		// flag will be unset by software
 	}
 
 	button_status();
@@ -337,20 +389,20 @@ void set_hour_dbuf(uint8_t display_hour) {
 void init(void) {
 
 	// Display initialization
-	P1 = 0x00;				// disable all segments
-	P3 |= 0x04;				// disable all digits
+	P1 = 0x00;			// disable all segments
+	P3 |= 0x04;			// disable all digits
 
 	// Timer0 initialization
-    TMOD = 0x01;			// Set Timer0 to mode 1, 16-bit 
-    TH0 = CLOCK_TIMER_HIGH;
-    TL0 = CLOCK_TIMER_LOW;	// Set counter to 15541, overlfow at 65536, a difference of 49995; about 50 milliseconds per trigger
-	PT0 = 1;				// Giver Timer0 high priority
-    ET0 = 1;		        // Enable Timer0 interrupt
-    TR0 = 1;    		    // Enable Timer0
-    EA = 1;					// Enable global interrupts
+	TMOD = 0x01;			// Set Timer0 to mode 1, 16-bit 
+	TH0 = CLOCK_TIMER_HIGH;
+	TL0 = CLOCK_TIMER_LOW;		// Set counter to 15541, overlfow at 65536, a difference of 49995; about 50 milliseconds per trigger
+	PT0 = 1;			// Giver Timer0 high priority
+	ET0 = 1;		        // Enable Timer0 interrupt
+	TR0 = 1;    			// Enable Timer0
+	EA = 1;				// Enable global interrupts
 
 	// Other
-	P3_7 = 1;				// disable buzzer
+	P3_7 = 1;			// disable buzzer
 }
 
 void main(void) {
@@ -368,14 +420,14 @@ void main(void) {
 			} 
 			if (clock_state == ALARMING) {
 				if (show_colon == 1) {
-					P3_7 = !P3_7;				// P3_7 = show_colon; (this toggling creates an interesting effect)
+					P3_7 = !P3_7;	// P3_7 = show_colon; (this toggling creates an interesting effect)
 				} else {
-					P3_7 = 1;					// if doing the toggling effect, need to make sure buzzer is off during blink
+					P3_7 = 1;	// if doing the toggling effect, need to make sure buzzer is off during blink
 				}
 			}
 		} else if (clock_state == ALARMING) {	// turn off the alarm after 1 minute
 			clock_state = NORMAL;
-			P3_7 = 1;						// turn off the alarm
+			P3_7 = 1;			// turn off the alarm
 		}
 
 		// handle button events based on current clock state
@@ -436,10 +488,28 @@ void main(void) {
 					B1_RELEASED = 0;
 				}
 				break;
+
+			case TIMER:
+				if (B2_RELEASED) {
+					clock_state = NORMAL;
+					B2_RELEASED = 0;
+				} else if (B1_PRESSED_LONG) {
+					timer_reset();
+					// really need to create some sort of change/state or button clear routine
+					// otherwise possible to enter TIMER state with B1_PRESSED_LONG set if you push both buttons at the same time.
+				} else if (B1_RELEASED_LONG) {
+					// a LONG press is a reset, do not toggle the timmer on a LONG press
+					B1_RELEASED = 0;
+					B1_RELEASED_LONG = 0;
+				} else if (B1_RELEASED) {
+					TIMER_RUNNING = !TIMER_RUNNING;	// toggle timer
+					B1_RELEASED = 0;
+				}
+				break;
 	
 			case SET_24H:
 				if (B2_RELEASED) {
-					clock_state = NORMAL;
+					clock_state = TIMER;
 					B2_RELEASED = 0;
 				} else if (B1_RELEASED) {
 					TWELVE_TIME = !TWELVE_TIME;
@@ -452,7 +522,7 @@ void main(void) {
 					clock_state = NORMAL;
 					B1_PRESSED = 0;
 					CLOCK_RUNNING = 1;
-				} else if (B2_PRESSED) {	// increment minute
+				} else if (B2_PRESSED) {		// increment minute
 					increment_minute();
 					clock_second = 0;		// reset seconds to 0 when time is changed
 					B2_PRESSED = 0;
@@ -467,7 +537,7 @@ void main(void) {
 				if (B1_PRESSED) {			// switch to edit minute mode
 					clock_state = EDIT_MIN;
 					B1_PRESSED = 0;
-				} else if (B2_PRESSED) {	// increment hour
+				} else if (B2_PRESSED) {		// increment hour
 					increment_hour();
 					clock_second = 0;		// reset seconds to 0 when time is changed
 					B2_PRESSED = 0;					
@@ -570,6 +640,16 @@ void main(void) {
 					dbuf[1] = ledtable[LED_BLANK];
 					dbuf[2] = ledtable[LED_BLANK];
 					dbuf[3] = ledtable[LED_BLANK];
+				}
+				break;
+
+			case TIMER:
+				dbuf[0] = ledtable[(timer_minute/10)];
+				dbuf[1] = ledtable[(timer_minute%10)];
+				dbuf[2] = ledtable[(timer_second/10)];
+				dbuf[3] = ledtable[(timer_second%10)];
+				if (!TIMER_RUNNING || show_colon) {
+					dbuf[1] |= 1;
 				}
 				break;
 
