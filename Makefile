@@ -1,18 +1,30 @@
-SDCC ?= sdcc
-STCCODESIZE ?= 2048
-SDCCOPTS ?= -mmcs51 --code-size $(STCCODESIZE)
-FLASHFILE ?= main.hex
+SDCC = sdcc
+STCCODESIZE = 2048
+SDCCOPTS = -mmcs51 --opt-code-size --code-size $(STCCODESIZE)
+TARGET = main
+BUILDDIR = build
 
-all: main
+ifdef OS
+   RM = del /Q
+   CP = copy
+   FixPath = $(subst /,\,$1)
+else
+   ifeq ($(shell uname), Linux)
+      RM = rm -f
+      CP = cp
+      FixPath = $1
+   endif
+endif
 
-build/%.rel: src/%.c src/%.h
-	mkdir -p $(dir $@)
-	$(SDCC) $(SDCCOPTS) -o $@ -c $<
+all: $(BUILDDIR) $(TARGET)
 
-main: $(OBJ)
-	$(SDCC) -o build/ src/$@.c $(SDCCOPTS) $^
-	cp build/$@.ihx clock.hex
+$(BUILDDIR):
+        @mkdir $@
+
+$(TARGET): src/$(TARGET).c
+        $(SDCC) -o build/ src/$@.c $(SDCCOPTS)
+        @$(CP) $(call FixPath,build/$@.ihx) clock.hex
 
 clean:
-	rm -f *.ihx *.hex *.bin
-	rm -rf build/*
+        @$(RM) $(call FixPath,build/*)
+        @rmdir $(BUILDDIR)
