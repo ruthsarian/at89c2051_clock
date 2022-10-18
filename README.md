@@ -34,6 +34,8 @@ Resistor R6, I believe, is being used to trickle-charge a rechargeable backup ba
 ## Compiling
 I compile this code using the [Small Device C Compiler](http://sdcc.sourceforge.net/). The included makefile will compile this code and generate an Intel hex format file named clock.hex. This file may be used to the program the microcontroller.
 
+You may encounter an error where the compiled file is too large for the EEPROM on the AT89C2051. If this happens I recommend seeking out version 3.5.0 of SDCC and compile with that. Later versions of SDCC appear to increase the size of the compiled program to beyond the 2kb limit of the AT89C2051.
+
 ## Programming the AT89C2051
 This kit does not include an ICSP/ISP programming header. As such you will need to use an external device to program the chip before putting it into circuit. Instruction on how to do that will vary with the device used to program the chip, so no such instructions are included here. I use a [TL866](https://www.ebay.com/sch/i.html?_nkw=TL866), however [there are probably much cheaper options out there](https://www.startpage.com/do/search?query=at89c2051+programmer). 
 
