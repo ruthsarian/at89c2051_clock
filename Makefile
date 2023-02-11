@@ -5,26 +5,28 @@ TARGET = main
 BUILDDIR = build
 
 ifdef OS
-   RM = del /Q
-   CP = copy
-   FixPath = $(subst /,\,$1)
+	RM = del /Q
+	CP = copy
+	DIRSEP = \$
+	RMDIR = rmdir
 else
-   ifeq ($(shell uname), Linux)
-      RM = rm -f
-      CP = cp
-      FixPath = $1
-   endif
+	ifeq ($(shell uname), Linux)
+		RM = rm -f
+		CP = cp
+		DIRSEP = /
+		RMDIR = rmdir
+	endif
 endif
 
 all: $(BUILDDIR) $(TARGET)
 
 $(BUILDDIR):
-        @mkdir $@
+	@mkdir $@
 
 $(TARGET): src/$(TARGET).c
-        $(SDCC) -o build/ src/$@.c $(SDCCOPTS)
-        @$(CP) $(call FixPath,build/$@.ihx) clock.hex
+	$(SDCC) -o build/ src/$@.c $(SDCCOPTS)
+	@$(CP) $(BUILDDIR)$(DIRSEP)$@.ihx clock.hex
 
 clean:
-        @$(RM) $(call FixPath,build/*)
-        @rmdir $(BUILDDIR)
+	@$(RM) "$(BUILDDIR)$(DIRSEP)*"
+	@$(RMDIR) "$(BUILDDIR)"

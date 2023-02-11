@@ -49,9 +49,10 @@
 #define CLOCK_TIMER_HIGH		0x3C
 #define CLOCK_TIMER_LOW			0xD5	// original ASM source was 0xB5, but experimentation shows this should be a more accurate value
 #define CLOCK_TIMER_COUNT		20
-#define CLOCK_COLON_COUNT		10	// 1/2 of CLOCK_TIMER_COUNT
+#define CLOCK_COLON_COUNT		10		// 1/2 of CLOCK_TIMER_COUNT
 #define CLOCK_BLINK_COUNT		5
 #define CLOCK_INCREMENT_COUNT	4
+#define HIDE_LEADING_ZERO				// comment out if you want the leading 0 to appear
 
 // Button related defines
 #define BUTTON_PRESS			2
@@ -354,8 +355,16 @@ void display_update(void) {
 			// enable appropriate segments
 			P1 = dbuf[digit];
 
-			// enable appropriate digit (set it to 0; leave others 1)
-			P3 &= (~(1 << digit));
+			#ifdef HIDE_LEADING_ZERO
+			if (digit != 0 || dbuf[digit] != ledtable[0]) {
+			#endif
+
+				// enable appropriate digit (set it to 0; leave others 1)
+				P3 &= (~(1 << digit));
+
+			#ifdef HIDE_LEADING_ZERO
+			}
+			#endif
 
 			// delay
 			delay1ms();
