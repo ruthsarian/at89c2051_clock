@@ -45,9 +45,35 @@
 // so said EVELYN the modified DOG
 #pragma less_pedantic
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//Metric Clock info:
+//	a metric day has  100000 metric seconds
+//	a standard day has 86400 standard seconds
+//	so if 0x3CD5 (count of 49963) is 50ms
+//	then the metric count should be 43168
+//	and the metric timer value should be
+//	0x575F metric or 0x3CD5 standard
+////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef METRIC
+#define HOUR_MAX	10		// for metric clock
+#define MIN_MAX		100		// use 24/60/60
+#define SEC_MAX		100		// for standard clock
+#define CLOCK_TIMER_HIGH	0x57	//  0x3C
+#define CLOCK_TIMER_LOW		0x5F	//  0xD5	// original ASM source was 0xB5, but experimentation shows this should be a more accurate value
+#else
+
+#define HOUR_MAX	24		
+#define MIN_MAX		60		
+#define SEC_MAX		60		
+
 // Clock related defines
-#define CLOCK_TIMER_HIGH		0x3C
-#define CLOCK_TIMER_LOW			0xD5	// original ASM source was 0xB5, but experimentation shows this should be a more accurate value
+#define CLOCK_TIMER_HIGH	0x3C	
+#define CLOCK_TIMER_LOW		0xD5	// original ASM source was 0xB5, but experimentation shows this should be a more accurate value
+#endif
+
+
+
 #define CLOCK_TIMER_COUNT		20
 #define CLOCK_COLON_COUNT		10		// 1/2 of CLOCK_TIMER_COUNT
 #define CLOCK_BLINK_COUNT		5
@@ -92,7 +118,7 @@ const uint8_t ledtable[] = {
 uint8_t dbuf[4];
 
 // clock variables
-volatile uint8_t clock_hour = 12;
+volatile uint8_t clock_hour = 5;
 volatile uint8_t clock_minute = 0;
 volatile uint8_t clock_second = 55;
 volatile uint8_t next_second = CLOCK_TIMER_COUNT;
@@ -103,7 +129,7 @@ volatile __bit CLOCK_RUNNING = 1;
 volatile __bit TWELVE_TIME = 0;			// 0 = 24 hour, 1 = 12 hour
 
 // alarm variables
-volatile uint8_t alarm_hour = 12;
+volatile uint8_t alarm_hour = 8;
 volatile uint8_t alarm_minute = 1;
 volatile __bit ALARM_ENABLE = 1;
 
@@ -215,14 +241,14 @@ void timer_reset() {
 }
 
 void increment_timer_minute() {
-	if (++timer_minute == 60) {
+	if (++timer_minute == MIN_MAX) {
 		timer_minute = 0;
 		// increment_timer_hour();
 	}
 }
 
 void increment_timer_second() {
-	if (++timer_second == 60) {
+	if (++timer_second == SEC_MAX) {
 		timer_second = 0;
 		increment_timer_minute();
 	}
@@ -230,14 +256,14 @@ void increment_timer_second() {
 
 // increment hour by 1
 void increment_hour() {
-	if (++clock_hour == 24) {
+	if (++clock_hour == HOUR_MAX) {
 		clock_hour = 0;
 	}
 }
 
 // increment minute by 1
 void increment_minute() {
-	if (++clock_minute == 60) {
+	if (++clock_minute == MIN_MAX) {
 		clock_minute = 0;
 		if (CLOCK_RUNNING) {
 			increment_hour();
@@ -247,7 +273,7 @@ void increment_minute() {
 
 // increment second by 1
 void increment_second() {
-	if (++clock_second == 60) {
+	if (++clock_second == SEC_MAX) {
 		clock_second = 0;
 		if (CLOCK_RUNNING) {
 			increment_minute();
@@ -259,14 +285,14 @@ void increment_second() {
 }
 
 void increment_alarm_hour() {
-	if (++alarm_hour == 24) {
+	if (++alarm_hour == HOUR_MAX) {
 		alarm_hour = 0;
 	}
 }
 
 // increment minute by 1
 void increment_alarm_minute() {
-	if (++alarm_minute == 60) {
+	if (++alarm_minute == MIN_MAX) {
 		alarm_minute = 0;
 		if (CLOCK_RUNNING) {
 			increment_alarm_hour();
